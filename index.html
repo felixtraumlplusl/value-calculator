@@ -1,0 +1,184 @@
+<!-- Berechnungslogik aktualisiert nach Excel-Formeln -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RI Revenue Value Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #1d0f4d;
+      color: #333;
+      margin: 0;
+      padding: 40px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 40px;
+    }
+    h1 {
+      color: #ffffff;
+      text-align: center;
+      width: 100%;
+    }
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 40px;
+      max-width: 1200px;
+      width: 100%;
+    }
+    .card {
+      background-color: #ffffff;
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      flex: 1 1 45%;
+      box-sizing: border-box;
+    }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: bold;
+      color: #333;
+    }
+    input[type="number"] {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 20px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+      background-color: #f9f9f9;
+      -moz-appearance: textfield;
+    }
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .result-label {
+      font-weight: bold;
+      margin-bottom: 5px;
+      display: block;
+    }
+    .result-value {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 20px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background-color: #f0f0f0;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <label for="passengers">Passenger p.a.</label>
+      <input type="number" id="passengers" value="40000000" />
+
+      <label for="bookToFly">Book To Fly Rate in %</label>
+      <input type="number" id="bookToFly" value="100" step="0.01" />
+
+      <label for="directRate">Direct Channel Rate (bookings made in airline inventory)</label>
+      <input type="number" id="directRate" value="40" step="0.01" />
+
+      <label for="indirectRate">Indirect Channel Rate (bookings made in GDS systems)</label>
+      <input type="number" id="indirectRate" value="60" step="0.01" />
+
+      <label for="cancelRate">Cancellation Rate (cancelled by LSY RI)</label>
+      <input type="number" id="cancelRate" value="12.75" step="0.01" />
+
+      <label for="costPerSSB">Cost per SSB in $</label>
+      <input type="number" id="costPerSSB" value="3" step="0.01" />
+
+      <label for="revenuePerSeat">Revenue Per Seat in $</label>
+      <input type="number" id="revenuePerSeat" value="100" step="0.01" />
+
+      <label for="resaleRate">Resale-Rate in %</label>
+      <input type="number" id="resaleRate" value="2" step="0.01" />
+    </div>
+
+    <div class="card">
+      <span class="result-label">Bookings</span>
+      <div class="result-value" id="bookings"></div>
+
+      <span class="result-label">Cancelled Bookings (direct)</span>
+      <div class="result-value" id="cancelledDirect"></div>
+
+      <span class="result-label">Cancelled Bookings (indirect)</span>
+      <div class="result-value" id="cancelledIndirect"></div>
+
+      <span class="result-label">Total Cancelled Bookings</span>
+      <div class="result-value" id="totalCancelled"></div>
+
+      <hr style="margin: 30px 0;" />
+
+      <span class="result-label">Inventory Costs Savings in $</span>
+      <div class="result-value" id="inventorySavings"></div>
+
+      <span class="result-label">Additional Revenue in $</span>
+      <div class="result-value" id="additionalRevenue"></div>
+
+      <span class="result-label">Extra Costs Savings by ISC in $</span>
+      <div class="result-value" id="iscSavings"></div>
+
+      <span class="result-label">Bottom Line Effect in $</span>
+      <div class="result-value" id="bottomLineEffect"></div>
+
+      <span class="result-label">Bottom Line Effect with ISC in $</span>
+      <div class="result-value" id="bottomLineWithISC"></div>
+
+      <span class="result-label">Value created per passenger in $</span>
+      <div class="result-value" id="valuePerPassenger"></div>
+    </div>
+  </div>
+
+  <script>
+    const inputs = document.querySelectorAll("input");
+    inputs.forEach(input => input.addEventListener("input", calculate));
+
+    function calculate() {
+      const passengers = parseFloat(document.getElementById("passengers").value) || 0;
+      const bookToFly = (parseFloat(document.getElementById("bookToFly").value) || 0) / 100;
+      const directRate = (parseFloat(document.getElementById("directRate").value) || 0) / 100;
+      const indirectRate = (parseFloat(document.getElementById("indirectRate").value) || 0) / 100;
+      const cancelRate = (parseFloat(document.getElementById("cancelRate").value) || 0) / 100;
+      const costPerSSB = parseFloat(document.getElementById("costPerSSB").value) || 0;
+      const revenuePerSeat = parseFloat(document.getElementById("revenuePerSeat").value) || 0;
+      const resaleRate = (parseFloat(document.getElementById("resaleRate").value) || 0) / 100;
+
+      const bookings = passengers * bookToFly;
+      const directBookings = bookings * directRate;
+      const indirectBookings = bookings * indirectRate;
+
+      const cancelledDirect = directBookings * cancelRate;
+      const cancelledIndirect = indirectBookings * cancelRate;
+      const totalCancelled = cancelledDirect + cancelledIndirect;
+
+      const inventorySavings = cancelledIndirect * (1 - resaleRate) * costPerSSB;
+      const additionalRevenue = totalCancelled * resaleRate * revenuePerSeat;
+      const iscSavings = cancelledIndirect * 0.05 * costPerSSB;
+      const bottomLine = inventorySavings + additionalRevenue;
+      const bottomLineWithISC = bottomLine + iscSavings;
+      const valuePerPassenger = passengers > 0 ? bottomLine / passengers : 0;
+
+      document.getElementById("bookings").innerText = bookings.toLocaleString();
+      document.getElementById("cancelledDirect").innerText = cancelledDirect.toLocaleString();
+      document.getElementById("cancelledIndirect").innerText = cancelledIndirect.toLocaleString();
+      document.getElementById("totalCancelled").innerText = totalCancelled.toLocaleString();
+      document.getElementById("inventorySavings").innerText = inventorySavings.toLocaleString();
+      document.getElementById("additionalRevenue").innerText = additionalRevenue.toLocaleString();
+      document.getElementById("iscSavings").innerText = iscSavings.toLocaleString();
+      document.getElementById("bottomLineEffect").innerText = bottomLine.toLocaleString();
+      document.getElementById("bottomLineWithISC").innerText = bottomLineWithISC.toLocaleString();
+      document.getElementById("valuePerPassenger").innerText = valuePerPassenger.toLocaleString(undefined, {maximumFractionDigits: 2});
+    }
+
+    calculate();
+  </script>
+</body>
+</html>
